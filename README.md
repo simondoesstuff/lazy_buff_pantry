@@ -8,6 +8,8 @@ at the buff pantry.
 Designed for MacOS, but the agent itself is based on Cypress
 with NodeJS so it should be very portable.
 
+1. To get the dependencies, use `npm install`
+
 ## cypress/e2e/registerAppt/config.json
 **is required** and in the form:
 ```
