@@ -1,0 +1,2 @@
+# prevent credentials from being exposed
+cypress/e2e/registerAppt/config.json
