@@ -65,4 +65,4 @@ of launchd, it will attempt to register at that time or as soon as
 the device is turned on after that time.
 
 2. Load the `.plist` file with `launchctl load ~/Library/LaunchAgents/org.author.buff_pantry.plist`  
--- with the appropriate name/path to the `.plist` file on your machine.
+-- or the appropriate name/path to the `.plist` file on your machine.
