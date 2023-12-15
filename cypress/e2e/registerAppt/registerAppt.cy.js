@@ -74,12 +74,18 @@ describe('Registration', () => {
         cy.get('button').contains('Continue').click();
 
         // accept TOS if necessary
-        cy.get('div#event_tos')
-            .find('input[type="checkbox"]')
-            .then($el => {
-                if ($el.is(':checked')) return;
-                cy.wrap($el).first().click();
+        cy.get('body')
+            .then($body => {
+                if ($body.find('div#termsOfServiceModal').length === 0) return;
+
+                cy.get('div#event_tos')
+                    .find('input[type="checkbox"]')
+                    .then($el => {
+                        if ($el.is(':checked')) return;
+                        cy.wrap($el).first().click();
+                    });
             });
+
 
         // register ✅
         cy.get('button').contains(/Continue|Update/).click();
