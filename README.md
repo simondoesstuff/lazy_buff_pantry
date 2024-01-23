@@ -14,17 +14,46 @@ with NodeJS so it should be very portable.
 **is required** and in the form:
 ```
 {
-    "identiKey": "...",
-    "password": "...",
-
-    "day": "Fri",
-    "t1": "3",
-    "t2": "4"
+  "identiKey": "...",
+  "password": "...",
+  "logFile": "log.txt",
+  "minDayGap": "4",
+  "times": [
+    {
+      "day": "Tue",
+      "t1": "1:00pm",
+      "t2": "2:00pm"
+    },
+    {
+      "day": "Fri",
+      "t1": "3:00pm",
+      "t2": "4:00pm"
+    },
+    {
+      "day": "Fri",
+      "t1": "3:30pm",
+      "t2": "4:00pm"
+    }
+  ]
 }
 ```
 where `day` is one of `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun`,
 and `t1` and `t2` represent the start and end times of the appointment.
-It will register for **all** matching appointments that meet the criteria.
+
+The `minDayGap` is the minimum number of days between appointments.
+It is used to prevent registering for multiple appointments in the same week.
+
+**You must manually create the (empty) log file** as specified in the config.
+The agent will not create it for you. This is due to the way Cypress handles
+file creation.
+
+### Registration Algorithm:
+1. It will only register for one appointment per day.
+2. If there is already a registration for that day, it will not register.
+3. If there has already been a recent(minDayGap) registration, it will not register.
+4. If there are multiple available appointments that meet the criteria,
+it will register in priority order of the `times` array.
+5. It will only register for future appointments (after the previously registered appointment).
 
 ### Run with [./register_buff_pantry.sh](./register_buff_pantry.sh) 
 

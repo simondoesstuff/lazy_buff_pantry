@@ -93,36 +93,36 @@ describe('Registration', () => {
 
                 let lastApptDay = -90; // effectively infinity (days)
 
-                a: for (const [key, appts] of appointmentIndex) {
-                    /*  Rules:
-                            One appointment per day.
-                            Only book appointments that match the specified criteria.
-                            Multiple candidates? Pick the highest priority given by the config.
-                     */
-
-                    cy.log(`Found ${appts.length} appointments on ${key}`);
-
+                // find the last appointment day
+                for (const appts of appointmentIndex.values()) {
                     for (const appt of appts) {
                         if (appt.checkedAlready) {
                             // skip days that already have an appointment
-                            if (appt.dayOfMonth > lastApptDay) {
-                                lastApptDay = appt.dayOfMonth;
-                            }
-
-                            continue a;
+                            if (appt.dayOfMonth > lastApptDay) lastApptDay = appt.dayOfMonth;
                         }
                     }
+                }
 
-                    // (appts is at least length 1)
-                    if (appts[0].dayOfMonth - lastApptDay < config.minDayGap) {
-                        // skip days that are too close to the last appointment
-                        continue;
-                    }
+                for (const target of config.times) {
+                    dayLoop: for (const appts of appointmentIndex.values()) {
+                        /*  Rules:
+                                One appointment per day.
+                                Only book appointments that match the specified criteria.
+                                Multiple candidates? Pick the highest priority given by the config.
+                         */
 
-                    // we can assume today doesn't have an appointment
-                    for (const target of config.times) {
+                        // (appts is at least length 1)
+                        const dayOfMonth = appts[0].dayOfMonth;
+                        const dayOfWeek = appts[0].dayOfWeek;
+
+                        if (dayOfWeek !== target.day) continue;
+                        if (dayOfMonth - lastApptDay < config.minDayGap) continue;
+
                         for (const appt of appts) {
-                            if (appt.dayOfWeek !== target.day) continue;
+                            if (appt.checkedAlready) continue dayLoop;
+                        }
+
+                        for (const appt of appts) {
                             if (appt.t1 !== target.t1) continue;
                             if (appt.t2 !== target.t2) continue;
 
@@ -135,7 +135,7 @@ describe('Registration', () => {
 
                             results.push(appt);
                             cy.wrap(appt.checkElement).click();
-                            continue a;
+                            continue dayLoop;
                         }
                     }
                 }
@@ -180,7 +180,7 @@ describe('Registration', () => {
             let entry = `\n${dateStr} ${timeStr}`;
 
             if (results.length === 0) {
-                entry += '\n  - no appointments found.\n';
+                entry += '\n  - no appointments found.';
             } else {
                 for (const result of results) {
                     entry += `\n  + new appointment: ${result.title}.`;
