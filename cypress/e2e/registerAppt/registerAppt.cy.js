@@ -1,6 +1,4 @@
 import config from './config.json'
-// the config contains the credentials and additional fields:
-//  day, t1, t2 (day of week, start time, end time)
 
 
 describe('Registration', () => {
@@ -49,27 +47,100 @@ describe('Registration', () => {
 
         // sift through available appointments
         cy.log("Looking for appointment");
-        cy.get('div.shift-item-container').each(($el) => {
-            const check = $el.find('input[type="checkbox"]');
-            if (check.is(':checked')
-                || check.is(':disabled'))
-                return;
 
-            const label = $el.find('label.shift-item-label')
-            const title = label.text();
-            const spans = label.find('span');
-            const dayStr = spans.eq(0).text();
-            const timeStr = spans.eq(1).text();
-            const day = /\s*(\w{3}),/.exec(dayStr)[1];
-            if (day !== config.day) return;
+        let results = [];
+        { // appointment selection
+            let appointmentIndex = new Map();
 
-            const [_, t1, t2] = /\s*(\d):.+(\d):/.exec(timeStr);
-            if (t1 !== config.t1 || t2 !== config.t2) return;
+            const regexDay = /(\w{3}),\s*(\w{3}) (\d{1,2})/;
+            const regexTime = /(\d{1,2}:\d{2}[ap]m).*-.*(\d{1,2}:\d{2}[ap]m)/;
 
-            // register for all matching appointments
-            cy.log('Found one!', title);
-            cy.wrap(check).click();
-        });
+            // 1. index all available appointments
+            cy.get('div.shift-item-container').each(($el) => {
+                const checkElement = $el.find('input[type="checkbox"]');
+                if (checkElement.is(':disabled')) return;
+
+                const label = $el.find('label.shift-item-label')
+                const spans = label.find('span');
+                const dayStr = spans.eq(0).text();
+                const timeStr = spans.eq(1).text();
+
+                const [_1, dayOfWeek, month, dayOfMonth] = regexDay.exec(dayStr);
+                const [_2, t1, t2] = regexTime.exec(timeStr);
+                const title = `${month} ${dayOfMonth}, ${dayOfWeek} ${t1} - ${t2}`
+                const checkedAlready = checkElement.is(':checked');
+                cy.log(`Candidate appointment indexed: ${title}`);
+
+                const key = `${month} ${dayOfMonth}`;
+                const cache = appointmentIndex.get(key) ?? [];
+                const entry = {
+                    title,
+                    dayOfWeek,
+                    dayOfMonth,
+                    t1,
+                    t2,
+                    checkedAlready,
+                    checkElement
+                }
+
+                cache.push(entry);
+                appointmentIndex.set(key, cache);
+            }).then(() => {
+
+                // 2. find appointments that match the specified criteria
+
+                cy.log(`Found ${appointmentIndex.size} days with appointments`);
+
+                let lastApptDay = -90; // effectively infinity (days)
+
+                a: for (const [key, appts] of appointmentIndex) {
+                    /*  Rules:
+                            One appointment per day.
+                            Only book appointments that match the specified criteria.
+                            Multiple candidates? Pick the highest priority given by the config.
+                     */
+
+                    cy.log(`Found ${appts.length} appointments on ${key}`);
+
+                    for (const appt of appts) {
+                        if (appt.checkedAlready) {
+                            // skip days that already have an appointment
+                            if (appt.dayOfMonth > lastApptDay) {
+                                lastApptDay = appt.dayOfMonth;
+                            }
+
+                            continue a;
+                        }
+                    }
+
+                    // (appts is at least length 1)
+                    if (appts[0].dayOfMonth - lastApptDay < config.minDayGap) {
+                        // skip days that are too close to the last appointment
+                        continue;
+                    }
+
+                    // we can assume today doesn't have an appointment
+                    for (const target of config.times) {
+                        for (const appt of appts) {
+                            if (appt.dayOfWeek !== target.day) continue;
+                            if (appt.t1 !== target.t1) continue;
+                            if (appt.t2 !== target.t2) continue;
+
+                            // found a match!
+                            cy.log(`Registering for ${appt.title}`);
+
+                            if (appt.dayOfMonth > lastApptDay) {
+                                lastApptDay = appt.dayOfMonth;
+                            }
+
+                            results.push(appt);
+                            cy.wrap(appt.checkElement).click();
+                            continue a;
+                        }
+                    }
+                }
+            });
+        }
 
         cy.get('button').contains('Continue').click();
 
@@ -88,7 +159,35 @@ describe('Registration', () => {
 
 
         // register ✅
-        cy.get('button').contains(/Continue|Update/).click();
-        cy.log("Registered! 🎉");
+
+        cy.get('button')
+            .contains(/Continue|Update/)
+            .click()
+            .then(() => {
+                cy.log(`Made ${results.length} appointments.`);
+                cy.log("Registered! 🎉");
+            });
+
+        // log the results
+
+        if (!config.logFile) return;
+
+        // todo the user will need to create the log
+        cy.readFile(config.logFile, 'ascii').then(log => {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString();
+            const timeStr = now.toLocaleTimeString();
+            let entry = `\n${dateStr} ${timeStr}`;
+
+            if (results.length === 0) {
+                entry += '\n  - no appointments found.\n';
+            } else {
+                for (const result of results) {
+                    entry += `\n  + new appointment: ${result.title}.`;
+                }
+            }
+
+            cy.writeFile(config.logFile, log + entry, 'ascii');
+        });
     })
 })
