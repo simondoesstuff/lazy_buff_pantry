@@ -52,8 +52,12 @@ describe('Registration', () => {
         { // appointment selection
             let appointmentIndex = new Map();
 
-            const regexDay = /(\w{3}),\s*(\w{3}) (\d{1,2})/;
+            const regexDay = /(\w{3}),\s*(\w{3})\s*(\d{1,2})/;
             const regexTime = /(\d{1,2}:\d{2}[ap]m).*-.*(\d{1,2}:\d{2}[ap]m)/;
+
+            // crucial time to wait for the page to load
+            // just in case,
+            cy.wait(2000);
 
             // 1. index all available appointments
             cy.get('div.shift-item-container').each(($el) => {
@@ -62,14 +66,19 @@ describe('Registration', () => {
 
                 const label = $el.find('label.shift-item-label')
                 const spans = label.find('span');
-                const dayStr = spans.eq(0).text();
-                const timeStr = spans.eq(1).text();
+                const dayStr = spans.eq(0).text() ?? '';
+                const timeStr = spans.eq(1).text() ?? '';
 
-                const [_1, dayOfWeek, month, dayOfMonth] = regexDay.exec(dayStr);
-                const [_2, t1, t2] = regexTime.exec(timeStr);
+                const dayResult = regexDay.exec(dayStr);
+                const timeResult = regexTime.exec(timeStr);
+
+                if (!dayResult || !timeResult) return;
+
+                const [_1, dayOfWeek, month, dayOfMonth] = dayResult;
+                const [_2, t1, t2] = timeResult;
                 const title = `${month} ${dayOfMonth}, ${dayOfWeek} ${t1} - ${t2}`
                 const checkedAlready = checkElement.is(':checked');
-                cy.log(`Candidate appointment indexed: ${title}`);
+                cy.log(`Candidate appointment: ${title}`);
 
                 const key = `${month} ${dayOfMonth}`;
                 const cache = appointmentIndex.get(key) ?? [];
@@ -147,7 +156,7 @@ describe('Registration', () => {
         // accept TOS if necessary
         cy.get('body')
             .then($body => {
-                if ($body.find('div#termsOfServiceModal').length === 0) return;
+                if ($body.find('div#event_tos').length === 0) return;
 
                 cy.get('div#event_tos')
                     .find('input[type="checkbox"]')
@@ -166,28 +175,30 @@ describe('Registration', () => {
             .then(() => {
                 cy.log(`Made ${results.length} appointments.`);
                 cy.log("Registered! 🎉");
+            })
+            .then(() => {
+
+                // log the results
+
+                if (!config.logFile) return;
+
+                // todo the user will need to create the log
+                cy.readFile(config.logFile, 'ascii').then(log => {
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString();
+                    const timeStr = now.toLocaleTimeString();
+                    let entry = `\n${dateStr} ${timeStr}`;
+
+                    if (results.length === 0) {
+                        entry += '\n  - no appointments found.';
+                    } else {
+                        for (const result of results) {
+                            entry += `\n  + new appointment: ${result.title}.`;
+                        }
+                    }
+
+                    cy.writeFile(config.logFile, log + entry, 'ascii');
+                });
             });
-
-        // log the results
-
-        if (!config.logFile) return;
-
-        // todo the user will need to create the log
-        cy.readFile(config.logFile, 'ascii').then(log => {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString();
-            const timeStr = now.toLocaleTimeString();
-            let entry = `\n${dateStr} ${timeStr}`;
-
-            if (results.length === 0) {
-                entry += '\n  - no appointments found.';
-            } else {
-                for (const result of results) {
-                    entry += `\n  + new appointment: ${result.title}.`;
-                }
-            }
-
-            cy.writeFile(config.logFile, log + entry, 'ascii');
-        });
     })
 })
