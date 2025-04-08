@@ -1,15 +1,15 @@
 # Lazy Buff Pantry 💪
 
-Web scraping agent to automatically make weekly appointments
-at the buff pantry.
+An agent to automatically make weekly appointments
+at the buff pantry. Runs purely at the network level -- no browser.
 
 # Setup
 
 Designed for MacOS; platform agnostic besides notifications.
 
-1. To get the dependencies, use `poetry install`
-   or `nix develop` if you have `nix` installed.
-   or `direnv allow` if you have `direnv` installed.
+1. To get the dependencies (uv),  
+   `direnv allow` if you have `direnv` installed.  
+   or `nix develop` if you have only `nix` installed.  
 
 ## config.json
 
@@ -23,19 +23,20 @@ Designed for MacOS; platform agnostic besides notifications.
     "day": "Fri",
     "hour": 12
   },
-  "phone_number": "9876543210"
+  "phone_number": "+19998887777"
 }
 ```
 
 `phone_number` field is optional and macos only.
 
-### Run with `poetry run python src`
+### Run with `uv run main.py`
 
-or `./run.sh` after initial setup
+or `uv run main.py | tee -a log` to run the script and tee the output to a log.  
+or `./run.sh`
 
 ## Scheduled Registration
 
-MacOS has a built-in scheduler called `launchd`, a parallel to `cron` on Linux.
+MacOS has a built-in scheduler called `launchd`, a parallel to `cron` on Linux.  
 It can be used to automatically run the script at a specified time.
 
 1. Create a `.plist` file in `~/Library/LaunchAgents/` that matches
