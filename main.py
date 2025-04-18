@@ -26,6 +26,7 @@ session = requests.Session()
 fedAuth = "https://fedauth.colorado.edu/idp/profile/SAML2/POST/SSO"
 pantry = "https://app.pantrysoft.com"
 
+
 res = session.get(f"{pantry}/login/CUfeedthestampede").text
 # -> "/saml/login?idp=https://fedauth.colorado.edu/idp/shibboleth&target=https://app.pantrysoft.com/login/CUfeedthestampede"
 samlPath = re.search(r'"\/(saml\/login.*?)"', res).group(1)
@@ -73,14 +74,55 @@ samlTok = re.search(r'name="SAMLResponse"\s+value="(.*?)"', res).group(1)
 session.post(f"{pantry}/saml/login_check", data={"SAMLResponse": samlTok})
 
 
+# ----- Current Appointment Status
+
+
+def get_registrations():
+    res = session.get(f"{pantry}/storefront/order_summary").text
+    soup = BeautifulSoup(res, "html.parser")
+    summary = soup.find("summary-page")
+
+    if summary is None:
+        return list()
+
+    currentOrder = json.loads(summary.get(":current-order") or "{}")
+    ordersJson = json.loads(summary.get(":future-orders") or "[]")
+
+    if currentOrder is not None and "appointment" in currentOrder.keys():
+        ordersJson.append(currentOrder)
+
+    orders = list()
+
+    for order in ordersJson:
+        appt = order.get("appointment")
+        if appt is None:
+            continue
+        apptTime = appt.get("appointmentTime")
+        if apptTime is None:
+            continue
+        apptDate = apptTime.get("date")
+        if apptDate is None:
+            continue
+        dt = datetime.strptime(apptDate, "%Y-%m-%d %H:%M:%S.%f")
+        orders.append(dt)
+    return orders
+
+
+orders = get_registrations()
+newAppts = [appt for appt in orders if appt >= datetime.today()]
+
+if len(newAppts) != 0:
+    newApptsStr = ", ".join([appt.strftime("%Y-%m-%d %H:%M") for appt in newAppts])
+    print("Already appointed:", newApptsStr)
+    exit(0)
+
+
 # ----- Appointmentization
 
 
-pantry = "https://app.pantrysoft.com"
-
 now = datetime.now()
-start = datetime.now() - relativedelta(months=1)
-end = start + relativedelta(months=2)
+start = datetime.now() - relativedelta(days=14)
+end = datetime.now() + relativedelta(days=14)
 
 datetimeFormat = "%Y-%m-%dT%H:%M:%S"
 start = start.strftime(datetimeFormat)
@@ -120,9 +162,7 @@ for appt in apptInfo:
 
     targetAppt = {"start": re.search(r"(.*)T", appt["start"]).group(1), "bId": bId}
 
-if targetAppt is None:
-    print("New appointment not registered.")
-else:
+if targetAppt is not None:
     # make the appointment
     res = session.get(f"{pantry}/storefront/appointment").text
     # ->  <appointment-calendar csrf-token="de93...Fk41Q"
@@ -142,38 +182,24 @@ else:
     )
 
 
-# ----- Current Appointment Status
+# ----- Final Status
 
-
-res = session.get(f"{pantry}/storefront/order_summary").text
-soup = BeautifulSoup(res, "html.parser")
-summary = soup.find("summary-page")
-
-currentOrder = json.loads(summary.get(":current-order") or "{}")
-ordersJson = json.loads(summary.get(":future-orders") or "[]")
-
-if currentOrder is not None and "appointment" in currentOrder.keys():
-    ordersJson.append(currentOrder)
-
-orders = list()
-
-for order in ordersJson:
-    appt = order.get("appointment")
-    if appt is None:
-        continue
-    apptTime = appt.get("appointmentTime")
-    if apptTime is None:
-        continue
-    apptDate = apptTime.get("date")
-    if apptDate is None:
-        continue
-    orders.append(apptDate)
 
 finalStatus = list()
-finalStatus.append("Currrent Registration:")
+orders = get_registrations()  # refresh, considering new appointment
 
-for order in orders:
-    finalStatus.append(f"\t- {order}")
+if targetAppt is None:
+    finalStatus.append(">> Could not make appointment <<")
+
+if len(orders) != 0:
+    finalStatus.append("Current Registration:")
+    for order in orders:
+        today = datetime.today()
+        status = "(old)" if order < today else "(new)"
+        finalStatus.append(f"\t- {status} {order}")
+else:
+    finalStatus.append("No current appointment.")
+
 
 finalStatus = "\n".join(finalStatus)
 print(finalStatus)
