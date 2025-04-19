@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 from datetime import datetime
@@ -9,12 +10,21 @@ from dateutil.relativedelta import relativedelta
 
 # ----- Init
 
+if "config.json" not in os.listdir():
+    print("Missing config.json; check README.md")
+    exit(1)
 
 conf = json.load(open("config.json"))
 daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 if conf["target"]["day"] not in daysOfWeek:
     print("Invalid config.target.day, expected one of: " + ", ".join(daysOfWeek))
+    exit(1)
+if "username" not in conf:
+    print("Missing username in config.json")
+    exit(1)
+if "password" not in conf:
+    print("Missing password in config.json")
     exit(1)
 
 session = requests.Session()
