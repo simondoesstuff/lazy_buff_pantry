@@ -15,9 +15,9 @@ if "config.json" not in os.listdir():
     exit(1)
 
 conf = json.load(open("config.json"))
-daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+daysOfWeek = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
-if conf["target"]["day"] not in daysOfWeek:
+if conf["target"]["day"].lower() not in daysOfWeek:
     print("Invalid config.target.day, expected one of: " + ", ".join(daysOfWeek))
     exit(1)
 if "username" not in conf:
@@ -217,7 +217,7 @@ print(finalStatus)
 
 def send_imessage(message, phone_number=None):
     if phone_number is None:
-        if "phone_number" not in conf:
+        if "phone_number" not in conf or conf["phone_number"] == "":
             return
         phone_number = conf["phone_number"]
 
