@@ -9,6 +9,5 @@ if [ -z "$IN_NIX_SHELL" ]; then
 fi
 
 cd "$(dirname "$0")"
-date >> log
+echo "========= $(date) =========" >> log
 uv run main.py | tee -a log
-echo >> log
