@@ -29,12 +29,23 @@ Designed for MacOS; platform agnostic besides notifications.
 
 `phone_number` field is optional and macos only.
 
-### Run with `uv run main.py`
+## Install
+
+`chmod +x ./install.sh`
+
+- `install.sh` install
+then
+- `install.sh -t` immediately test plist
+- `install.sh -u` uninstall
+
+### Or, manual
+
+**Run with `uv run main.py`**
 
 or `uv run main.py | tee -a log` to run the script and tee the output to a log.  
 or `./run.sh`
 
-## Scheduled Registration
+**Scheduled Registration**
 
 MacOS has a built-in scheduler called `launchd`, a parallel to `cron` on Linux.  
 It can be used to automatically run the script at a specified time.
