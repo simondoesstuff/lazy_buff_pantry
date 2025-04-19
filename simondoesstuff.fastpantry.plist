@@ -17,8 +17,6 @@
         <integer>10</integer>
         <key>Minute</key>
         <integer>0</integer>
-        <key>Weekday</key>
-        <integer>4</integer>
       </dict>
     </array>
   </dict>
